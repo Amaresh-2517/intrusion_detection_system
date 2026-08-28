@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Live Traffic{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Live Traffic</div>
+  <div class="page-meta" id="last-updated">—</div>
+</div>
+
+<div class="filter-bar">
+  <select id="filter-protocol">
+    <option value="">All protocols</option>
+    <option value="TCP">TCP</option>
+    <option value="UDP">UDP</option>
+    <option value="ICMP">ICMP</option>
+    <option value="OTHER">OTHER</option>
+  </select>
+  <input type="text" id="filter-src" placeholder="Filter by source IP…">
+</div>
+
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Protocol</th>
+        <th>Source</th>
+        <th>Destination</th>
+        <th>Size</th>
+      </tr>
+    </thead>
+    <tbody id="traffic-body">
+      <tr><td colspan="5" class="empty-state">Waiting for packets…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function buildQuery(params) {
+  const qs = Object.entries(params).filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+  return qs ? `?${qs}` : "";
+}
+
+async function refreshTraffic() {
+  try {
+    const qs = buildQuery({
+      protocol: document.getElementById("filter-protocol").value,
+      src_ip: document.getElementById("filter-src").value.trim(),
+    });
+    const rows = await fetchJSON("/api/traffic" + qs);
+    const body = document.getElementById("traffic-body");
+    if (rows.length === 0) {
+      body.innerHTML = '<tr><td colspan="5" class="empty-state">No traffic matches the current filters.</td></tr>';
+    } else {
+      body.innerHTML = rows.map(r => `
+        <tr>
+          <td>${escapeHtml(r.timestamp)}</td>
+          <td><span class="proto-tag proto-${escapeHtml(r.protocol)}">${escapeHtml(r.protocol)}</span></td>
+          <td>${escapeHtml(r.src_ip)}${r.src_port ? ':' + r.src_port : ''}</td>
+          <td>${escapeHtml(r.dst_ip)}${r.dst_port ? ':' + r.dst_port : ''}</td>
+          <td>${r.packet_size} B</td>
+        </tr>
+      `).join("");
+    }
+    document.getElementById("last-updated").textContent = "updated " + new Date().toLocaleTimeString();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+document.getElementById("filter-protocol").addEventListener("change", refreshTraffic);
+let srcDebounce;
+document.getElementById("filter-src").addEventListener("input", () => {
+  clearTimeout(srcDebounce);
+  srcDebounce = setTimeout(refreshTraffic, 350);
+});
+
+refreshTraffic();
+setInterval(refreshTraffic, {{ refresh_ms }});
+</script>
+{% endblock %}

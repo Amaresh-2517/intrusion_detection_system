@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in — NIDS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('dashboard.static', filename='style.css') }}">
+<style>
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .login-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 36px 32px;
+    width: 320px;
+  }
+  .login-brand {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 24px;
+  }
+  .login-brand .brand-mark { font-size: 22px; color: var(--accent-safe); }
+  .login-brand .brand-name { font-family: var(--font-mono); font-weight: 700; letter-spacing: 0.06em; font-size: 15px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 11.5px; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .field input {
+    width: 100%; background: var(--panel-raised); border: 1px solid var(--border);
+    border-radius: 6px; padding: 9px 11px; color: var(--text); font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .field input:focus { outline: none; border-color: var(--accent-data); }
+  .login-btn {
+    width: 100%; background: var(--accent-safe); color: #0b0e11; border: none;
+    border-radius: 6px; padding: 10px; font-weight: 700; font-size: 13px; cursor: pointer;
+    margin-top: 6px; font-family: var(--font-sans);
+  }
+  .login-error {
+    background: rgba(248,113,113,0.12); color: var(--accent-alert);
+    border-radius: 6px; padding: 8px 11px; font-size: 12px; margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="login-card">
+  <div class="login-brand">
+    <span class="brand-mark">◈</span>
+    <span class="brand-name">NIDS CONSOLE</span>
+  </div>
+  {% if error %}
+  <div class="login-error">{{ error }}</div>
+  {% endif %}
+  <form method="POST">
+    <div class="field">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" autocomplete="username" required>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" required>
+    </div>
+    <button type="submit" class="login-btn">Sign in</button>
+  </form>
+</div>
+</body>
+</html>
