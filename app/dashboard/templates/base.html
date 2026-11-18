@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}NIDS{% endblock %} — Network Intrusion Detection System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('dashboard.static', filename='style.css') }}">
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <div class="brand">
+      <span class="brand-mark">◈</span>
+      <div class="brand-text">
+        <span class="brand-name">NIDS</span>
+        <span class="brand-sub">console</span>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="{{ url_for('dashboard.live_traffic') }}" class="nav-item {{ 'active' if request.endpoint == 'dashboard.live_traffic' }}">
+        <span class="nav-glyph">▸</span> Live Traffic
+      </a>
+      <a href="{{ url_for('dashboard.alert_history') }}" class="nav-item {{ 'active' if request.endpoint == 'dashboard.alert_history' }}">
+        <span class="nav-glyph">▸</span> Alert History
+      </a>
+      <a href="{{ url_for('dashboard.statistics') }}" class="nav-item {{ 'active' if request.endpoint == 'dashboard.statistics' }}">
+        <span class="nav-glyph">▸</span> Statistics
+      </a>
+    </nav>
+    <div class="rail-footer">
+      <div class="status-dot" id="capture-status-dot"></div>
+      <span id="capture-status">checking capture…</span>
+    </div>
+    <form method="POST" action="{{ url_for('dashboard.logout') }}" style="margin-top:4px;">
+      <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+      <button type="submit" class="nav-item sign-out-button"><span class="nav-glyph">▸</span> Sign out</button>
+    </form>
+  </aside>
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script src="{{ url_for('dashboard.static', filename='app.js') }}"></script>
+<script>
+async function refreshCaptureHealth() {
+  try {
+    const health = await fetchJSON("/api/health");
+    const labels = {active: "capture active", waiting: "waiting for packets", stale: "no recent packets"};
+    document.getElementById("capture-status").textContent = labels[health.status] || "capture status unknown";
+    document.getElementById("capture-status-dot").className = "status-dot status-" + health.status;
+  } catch (e) {
+    document.getElementById("capture-status").textContent = "capture status unavailable";
+    document.getElementById("capture-status-dot").className = "status-dot status-stale";
+  }
+}
+refreshCaptureHealth();
+setInterval(refreshCaptureHealth, 10000);
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

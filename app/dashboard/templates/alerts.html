@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Alert History{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Alert History</div>
+  <div class="page-meta" id="last-updated">—</div>
+</div>
+
+<div class="filter-bar">
+  <select id="filter-severity">
+    <option value="">All severities</option>
+    <option value="Critical">Critical</option>
+    <option value="High">High</option>
+    <option value="Medium">Medium</option>
+    <option value="Low">Low</option>
+  </select>
+  <select id="filter-type">
+    <option value="">All alert types</option>
+    <option value="Port Scan">Port Scan</option>
+    <option value="ICMP Flood">ICMP Flood</option>
+    <option value="Repeated Connection Attempts">Repeated Connection Attempts</option>
+    <option value="Blacklisted IP">Blacklisted IP</option>
+    <option value="Signature Match">Signature Match</option>
+  </select>
+  <input type="text" id="filter-ip" placeholder="Filter by source IP…">
+  <div class="filter-spacer"></div>
+  <a class="btn" id="export-csv" href="/export/alerts.csv">⭳ CSV</a>
+  <a class="btn" id="export-pdf" href="/export/alerts.pdf">⭳ PDF</a>
+</div>
+
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Severity</th>
+        <th>Alert Type</th>
+        <th>Source IP</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody id="alerts-body">
+      <tr><td colspan="5" class="empty-state">No alerts yet — engine is monitoring.</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function currentFilters() {
+  return {
+    severity: document.getElementById("filter-severity").value,
+    alert_type: document.getElementById("filter-type").value,
+    source_ip: document.getElementById("filter-ip").value.trim(),
+  };
+}
+
+function buildQuery(params) {
+  const qs = Object.entries(params).filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+  return qs ? `?${qs}` : "";
+}
+
+function updateExportLinks() {
+  const qs = buildQuery(currentFilters());
+  document.getElementById("export-csv").href = "/export/alerts.csv" + qs;
+  document.getElementById("export-pdf").href = "/export/alerts.pdf" + qs;
+}
+
+async function refreshAlerts() {
+  try {
+    const qs = buildQuery(currentFilters());
+    const rows = await fetchJSON("/api/alerts" + qs);
+    const body = document.getElementById("alerts-body");
+    if (rows.length === 0) {
+      body.innerHTML = '<tr><td colspan="5" class="empty-state">No alerts match the current filters.</td></tr>';
+    } else {
+      body.innerHTML = rows.map(r => `
+        <tr>
+          <td>${escapeHtml(r.timestamp)}</td>
+          <td><span class="severity-badge severity-${escapeHtml(r.severity)}">${escapeHtml(r.severity)}</span></td>
+          <td class="alert-type">${escapeHtml(r.alert_type)}</td>
+          <td>${escapeHtml(r.source_ip)}</td>
+          <td>${escapeHtml(r.description)}</td>
+        </tr>
+      `).join("");
+    }
+    document.getElementById("last-updated").textContent = "updated " + new Date().toLocaleTimeString();
+    updateExportLinks();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+document.getElementById("filter-severity").addEventListener("change", refreshAlerts);
+document.getElementById("filter-type").addEventListener("change", refreshAlerts);
+let ipDebounce;
+document.getElementById("filter-ip").addEventListener("input", () => {
+  clearTimeout(ipDebounce);
+  ipDebounce = setTimeout(refreshAlerts, 350);
+});
+
+refreshAlerts();
+setInterval(refreshAlerts, {{ refresh_ms }});
+</script>
+{% endblock %}

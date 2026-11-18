@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Statistics{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Statistics</div>
+  <div class="page-meta" id="last-updated">—</div>
+</div>
+
+<div class="stat-grid" id="stat-cards">
+  <div class="stat-card"><div class="stat-value">—</div><div class="stat-label">Total Packets</div></div>
+  <div class="stat-card"><div class="stat-value">—</div><div class="stat-label">Total Alerts</div></div>
+</div>
+
+<div class="chart-grid">
+  <div class="chart-card">
+    <div class="chart-title">Top Source IPs</div>
+    <div id="top-sources"></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Protocol Distribution</div>
+    <div id="protocol-dist"></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Alerts by Severity</div>
+    <div id="severity-counts"></div>
+  </div>
+  <div class="chart-card" style="grid-column: 1 / -1;">
+    <div class="chart-title">Attack Type Counts</div>
+    <div id="attack-counts"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function renderBars(containerId, rows, labelKey) {
+  const container = document.getElementById(containerId);
+  if (rows.length === 0) {
+    container.innerHTML = '<div class="empty-state">No data yet.</div>';
+    return;
+  }
+  const max = Math.max(...rows.map(r => r.count));
+  container.innerHTML = rows.map(r => `
+    <div class="bar-row">
+      <div class="bar-label">${escapeHtml(r[labelKey] ?? 'unknown')}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(r.count / max * 100).toFixed(0)}%"></div></div>
+      <div class="bar-count">${r.count}</div>
+    </div>
+  `).join("");
+}
+
+async function refreshStats() {
+  try {
+    const s = await fetchJSON("/api/stats");
+    document.getElementById("stat-cards").innerHTML = `
+      <div class="stat-card"><div class="stat-value">${s.total_packets}</div><div class="stat-label">Total Packets</div></div>
+      <div class="stat-card"><div class="stat-value">${s.total_alerts}</div><div class="stat-label">Total Alerts</div></div>
+    `;
+    renderBars("top-sources", s.top_sources, "src_ip");
+    renderBars("protocol-dist", s.protocol_distribution, "protocol");
+    renderBars("severity-counts", s.severity_counts, "severity");
+    renderBars("attack-counts", s.attack_counts, "alert_type");
+    document.getElementById("last-updated").textContent = "updated " + new Date().toLocaleTimeString();
+  } catch (e) {
+    console.error(e);
+  }
+}
+refreshStats();
+setInterval(refreshStats, 8000);
+</script>
+{% endblock %}
